@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { photos as initialPhotos, type Photo } from '../data/photos';
+import { supabase } from '../lib/supabase';
+import type { Photo } from '../data/photos';
 
 export function usePhotos() {
-  const [photos, setPhotos] = useState<Photo[]>(() => {
-    const saved = localStorage.getItem('benzaid_photos');
-    return saved ? JSON.parse(saved) : initialPhotos;
-  });
+  const [photos, setPhotos] = useState<Photo[]>([]);
 
   useEffect(() => {
-    const onStorage = () => {
-      const saved = localStorage.getItem('benzaid_photos');
-      if (saved) setPhotos(JSON.parse(saved));
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    supabase
+      .from('photos')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setPhotos(data as Photo[]);
+      });
   }, []);
 
   return photos;

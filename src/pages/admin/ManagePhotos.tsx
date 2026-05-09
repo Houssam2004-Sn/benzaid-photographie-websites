@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { photos as initialPhotos, type Photo } from '../../data/photos';
+import { type Photo } from '../../data/photos';
 import { useCurrency } from '../../context/CurrencyContext';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { supabase } from '../../lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,64 +38,30 @@ const CATEGORIES: Category[] = ['Nature', 'Urban', 'Portrait', 'Landscape', 'Wil
 const REGIONS = ['North Africa', 'West Africa', 'East Africa', 'Southern Africa', 'Central Africa'];
 
 const emptyForm: FormData = {
-  title: '',
-  description: '',
-  category: 'Landscape',
-  continent_region: 'North Africa',
-  tags: '',
-  price_small: '',
-  price_large: '',
-  price_print_A4: '',
-  price_print_A3: '',
-  price_print_A2: '',
-  price_canvas: '',
-  price_commercial: '',
-  image_url: '',
-  watermarked_preview_url: '',
-  resolution: '',
-  file_size: '',
-  camera_model: '',
-  location_taken: '',
-  date_taken: '',
-  stock_prints: '',
-  dominant_color: '#C8A45A',
-  is_featured: false,
-  is_visible: true,
+  title: '', description: '', category: 'Landscape', continent_region: 'North Africa',
+  tags: '', price_small: '', price_large: '', price_print_A4: '', price_print_A3: '',
+  price_print_A2: '', price_canvas: '', price_commercial: '', image_url: '',
+  watermarked_preview_url: '', resolution: '', file_size: '', camera_model: '',
+  location_taken: '', date_taken: '', stock_prints: '', dominant_color: '#C8A45A',
+  is_featured: false, is_visible: true,
 };
 
 function photoToForm(p: Photo): FormData {
   return {
-    title: p.title,
-    description: p.description,
-    category: p.category,
-    continent_region: p.continent_region,
-    tags: p.tags.join(', '),
-    price_small: String(p.price_small),
-    price_large: String(p.price_large),
-    price_print_A4: String(p.price_print_A4),
-    price_print_A3: String(p.price_print_A3),
-    price_print_A2: String(p.price_print_A2),
-    price_canvas: String(p.price_canvas),
-    price_commercial: String(p.price_commercial),
-    image_url: p.image_url,
-    watermarked_preview_url: p.watermarked_preview_url,
-    resolution: p.resolution,
-    file_size: p.file_size,
-    camera_model: p.camera_model,
-    location_taken: p.location_taken,
-    date_taken: p.date_taken,
-    stock_prints: String(p.stock_prints),
-    dominant_color: p.dominant_color,
-    is_featured: p.is_featured,
-    is_visible: p.is_visible,
+    title: p.title, description: p.description, category: p.category,
+    continent_region: p.continent_region, tags: p.tags.join(', '),
+    price_small: String(p.price_small), price_large: String(p.price_large),
+    price_print_A4: String(p.price_print_A4), price_print_A3: String(p.price_print_A3),
+    price_print_A2: String(p.price_print_A2), price_canvas: String(p.price_canvas),
+    price_commercial: String(p.price_commercial), image_url: p.image_url,
+    watermarked_preview_url: p.watermarked_preview_url, resolution: p.resolution,
+    file_size: p.file_size, camera_model: p.camera_model, location_taken: p.location_taken,
+    date_taken: p.date_taken, stock_prints: String(p.stock_prints),
+    dominant_color: p.dominant_color, is_featured: p.is_featured, is_visible: p.is_visible,
   };
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function InputField({
-  label, name, value, onChange, type = 'text', placeholder = '', required = false,
-}: {
+function InputField({ label, name, value, onChange, type = 'text', placeholder = '', required = false }: {
   label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   type?: string; placeholder?: string; required?: boolean;
 }) {
@@ -103,49 +70,28 @@ function InputField({
       <label className="text-[#888880] text-xs uppercase tracking-wider">
         {label}{required && <span className="text-[#C8A45A] ml-1">*</span>}
       </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm placeholder-[#444] focus:outline-none focus:border-[#C8A45A] transition-colors"
-      />
+      <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required}
+        className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm placeholder-[#444] focus:outline-none focus:border-[#C8A45A] transition-colors" />
     </div>
   );
 }
 
-function SelectField({
-  label, name, value, onChange, options,
-}: {
-  label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  options: string[];
+function SelectField({ label, name, value, onChange, options }: {
+  label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; options: string[];
 }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[#888880] text-xs uppercase tracking-wider">{label}</label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm focus:outline-none focus:border-[#C8A45A] transition-colors"
-      >
+      <select name={name} value={value} onChange={onChange}
+        className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm focus:outline-none focus:border-[#C8A45A] transition-colors">
         {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
   );
 }
 
-// ─── Photo Modal ──────────────────────────────────────────────────────────────
-
-function PhotoModal({
-  mode, photo, onClose, onSave,
-}: {
-  mode: 'add' | 'edit';
-  photo: Photo | null;
-  onClose: () => void;
-  onSave: (data: FormData, previewUrl: string) => void;
+function PhotoModal({ mode, photo, onClose, onSave }: {
+  mode: 'add' | 'edit'; photo: Photo | null; onClose: () => void; onSave: (data: FormData, previewUrl: string) => void;
 }) {
   const [form, setForm] = useState<FormData>(mode === 'edit' && photo ? photoToForm(photo) : emptyForm);
   const [previewUrl, setPreviewUrl] = useState<string>(mode === 'edit' && photo ? photo.image_url : '');
@@ -155,10 +101,7 @@ function PhotoModal({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }));
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value }));
   };
 
   const handleFile = (file: File) => {
@@ -172,18 +115,6 @@ function PhotoModal({
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(form, previewUrl);
-  };
-
   const tabs = [
     { id: 'info', label: 'Informations' },
     { id: 'pricing', label: 'Prix' },
@@ -192,60 +123,35 @@ function PhotoModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal */}
       <div className="relative bg-[#141414] border border-[#2A2A2A] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2A2A2A]">
           <h2 className="font-['Cormorant_Garamond'] text-xl font-bold text-[#F5F5F0]">
             {mode === 'add' ? '+ Ajouter une photo' : 'Modifier la photo'}
           </h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1A1A1A] text-[#888880] hover:text-[#F5F5F0] hover:bg-[#2A2A2A] transition-colors cursor-pointer text-lg"
-          >
-            ×
-          </button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1A1A1A] text-[#888880] hover:text-[#F5F5F0] hover:bg-[#2A2A2A] transition-colors cursor-pointer text-lg">×</button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b border-[#2A2A2A] px-6">
           {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors cursor-pointer -mb-px ${
-                activeTab === tab.id
-                  ? 'border-[#C8A45A] text-[#C8A45A]'
-                  : 'border-transparent text-[#888880] hover:text-[#F5F5F0]'
-              }`}
-            >
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors cursor-pointer -mb-px ${activeTab === tab.id ? 'border-[#C8A45A] text-[#C8A45A]' : 'border-transparent text-[#888880] hover:text-[#F5F5F0]'}`}>
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
-
-          {/* ── Tab: Informations ── */}
+        <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'info' && (
             <div className="space-y-5">
-              {/* Image Upload */}
               <div className="flex flex-col gap-1">
-                <label className="text-[#888880] text-xs uppercase tracking-wider">
-                  Image <span className="text-[#C8A45A]">*</span>
-                </label>
+                <label className="text-[#888880] text-xs uppercase tracking-wider">Image <span className="text-[#C8A45A]">*</span></label>
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
+                  onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
                   onClick={() => fileRef.current?.click()}
-                  className={`relative border-2 border-dashed rounded-xl overflow-hidden cursor-pointer transition-all ${
-                    dragOver ? 'border-[#C8A45A] bg-[#C8A45A]/5' : 'border-[#2A2A2A] hover:border-[#C8A45A]/50 hover:bg-[#1A1A1A]'
-                  }`}
+                  className={`relative border-2 border-dashed rounded-xl overflow-hidden cursor-pointer transition-all ${dragOver ? 'border-[#C8A45A] bg-[#C8A45A]/5' : 'border-[#2A2A2A] hover:border-[#C8A45A]/50 hover:bg-[#1A1A1A]'}`}
                   style={{ minHeight: 160 }}
                 >
                   {previewUrl ? (
@@ -264,64 +170,32 @@ function PhotoModal({
                   )}
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-
-                {/* OR: image URL */}
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 h-px bg-[#2A2A2A]" />
-                  <span className="text-[#555] text-xs">ou URL</span>
-                  <div className="flex-1 h-px bg-[#2A2A2A]" />
+                  <div className="flex-1 h-px bg-[#2A2A2A]" /><span className="text-[#555] text-xs">ou URL</span><div className="flex-1 h-px bg-[#2A2A2A]" />
                 </div>
-                <input
-                  type="text"
-                  name="image_url"
-                  value={form.image_url.startsWith('data:') ? '' : form.image_url}
-                  onChange={e => {
-                    setForm(prev => ({ ...prev, image_url: e.target.value }));
-                    setPreviewUrl(e.target.value);
-                  }}
+                <input type="text" name="image_url" value={form.image_url.startsWith('data:') ? '' : form.image_url}
+                  onChange={e => { setForm(prev => ({ ...prev, image_url: e.target.value })); setPreviewUrl(e.target.value); }}
                   placeholder="/images/photo-13.jpg ou https://..."
-                  className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm placeholder-[#444] focus:outline-none focus:border-[#C8A45A] transition-colors"
-                />
+                  className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm placeholder-[#444] focus:outline-none focus:border-[#C8A45A] transition-colors" />
               </div>
-
               <InputField label="Titre" name="title" value={form.title} onChange={handleChange} placeholder="Sahara's Golden Dawn" required />
-
               <div className="flex flex-col gap-1">
                 <label className="text-[#888880] text-xs uppercase tracking-wider">Description</label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Description de la photo..."
-                  className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm placeholder-[#444] focus:outline-none focus:border-[#C8A45A] transition-colors resize-none"
-                />
+                <textarea name="description" value={form.description} onChange={handleChange} rows={3} placeholder="Description de la photo..."
+                  className="px-3 py-2.5 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg text-[#F5F5F0] text-sm placeholder-[#444] focus:outline-none focus:border-[#C8A45A] transition-colors resize-none" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <SelectField label="Catégorie" name="category" value={form.category} onChange={handleChange} options={CATEGORIES} />
                 <SelectField label="Région" name="continent_region" value={form.continent_region} onChange={handleChange} options={REGIONS} />
               </div>
-
               <InputField label="Lieu de prise de vue" name="location_taken" value={form.location_taken} onChange={handleChange} placeholder="Merzouga, Morocco" />
               <InputField label="Date de prise de vue" name="date_taken" value={form.date_taken} onChange={handleChange} type="date" />
               <InputField label="Tags (séparés par des virgules)" name="tags" value={form.tags} onChange={handleChange} placeholder="desert, sunrise, sahara" />
-
-              {/* Toggles */}
               <div className="flex gap-6">
-                {[
-                  { name: 'is_visible', label: 'Visible', checked: form.is_visible },
-                  { name: 'is_featured', label: 'En vedette ★', checked: form.is_featured },
-                ].map(toggle => (
+                {[{ name: 'is_visible', label: 'Visible', checked: form.is_visible }, { name: 'is_featured', label: 'En vedette ★', checked: form.is_featured }].map(toggle => (
                   <label key={toggle.name} className="flex items-center gap-2 cursor-pointer">
                     <div className="relative">
-                      <input
-                        type="checkbox"
-                        name={toggle.name}
-                        checked={toggle.checked}
-                        onChange={handleChange}
-                        className="sr-only peer"
-                      />
+                      <input type="checkbox" name={toggle.name} checked={toggle.checked} onChange={handleChange} className="sr-only peer" />
                       <div className="w-10 h-5 bg-[#2A2A2A] rounded-full peer-checked:bg-[#C8A45A] transition-colors" />
                       <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
                     </div>
@@ -332,7 +206,6 @@ function PhotoModal({
             </div>
           )}
 
-          {/* ── Tab: Pricing ── */}
           {activeTab === 'pricing' && (
             <div className="space-y-4">
               <p className="text-[#888880] text-xs">Tous les prix en USD ($)</p>
@@ -349,7 +222,6 @@ function PhotoModal({
             </div>
           )}
 
-          {/* ── Tab: Métadonnées ── */}
           {activeTab === 'meta' && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -361,35 +233,22 @@ function PhotoModal({
               <div className="flex flex-col gap-1">
                 <label className="text-[#888880] text-xs uppercase tracking-wider">Couleur dominante</label>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    name="dominant_color"
-                    value={form.dominant_color}
-                    onChange={handleChange}
-                    className="w-10 h-10 rounded-lg border border-[#2A2A2A] bg-transparent cursor-pointer"
-                  />
+                  <input type="color" name="dominant_color" value={form.dominant_color} onChange={handleChange}
+                    className="w-10 h-10 rounded-lg border border-[#2A2A2A] bg-transparent cursor-pointer" />
                   <span className="text-[#F5F5F0] text-sm font-mono">{form.dominant_color}</span>
                 </div>
               </div>
             </div>
           )}
-        </form>
+        </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#2A2A2A]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 border border-[#2A2A2A] text-[#888880] rounded-full text-sm hover:border-[#F5F5F0] hover:text-[#F5F5F0] transition-colors cursor-pointer"
-          >
+          <button type="button" onClick={onClose}
+            className="px-5 py-2.5 border border-[#2A2A2A] text-[#888880] rounded-full text-sm hover:border-[#F5F5F0] hover:text-[#F5F5F0] transition-colors cursor-pointer">
             Annuler
           </button>
-          <button
-            type="submit"
-            form=""
-            onClick={handleSubmit}
-            className="px-6 py-2.5 bg-[#C8A45A] text-[#0A0A0A] rounded-full text-sm font-semibold hover:bg-[#D4B66A] transition-colors cursor-pointer"
-          >
+          <button onClick={() => onSave(form, previewUrl)}
+            className="px-6 py-2.5 bg-[#C8A45A] text-[#0A0A0A] rounded-full text-sm font-semibold hover:bg-[#D4B66A] transition-colors cursor-pointer">
             {mode === 'add' ? 'Ajouter' : 'Enregistrer'}
           </button>
         </div>
@@ -397,8 +256,6 @@ function PhotoModal({
     </div>
   );
 }
-
-// ─── Delete Confirm Modal ──────────────────────────────────────────────────────
 
 function DeleteModal({ photo, onClose, onConfirm }: { photo: Photo; onClose: () => void; onConfirm: () => void }) {
   return (
@@ -409,24 +266,12 @@ function DeleteModal({ photo, onClose, onConfirm }: { photo: Photo; onClose: () 
           <div className="w-10 h-10 rounded-full bg-[#E05252]/10 flex items-center justify-center text-xl">🗑️</div>
           <h3 className="font-['Cormorant_Garamond'] text-lg font-bold text-[#F5F5F0]">Supprimer la photo</h3>
         </div>
-        <p className="text-[#888880] text-sm mb-1">
-          Vous êtes sur le point de supprimer :
-        </p>
+        <p className="text-[#888880] text-sm mb-1">Vous êtes sur le point de supprimer :</p>
         <p className="text-[#F5F5F0] font-medium mb-1">"{photo.title}"</p>
         <p className="text-[#888880] text-xs mb-6">Cette action est irréversible.</p>
         <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 border border-[#2A2A2A] text-[#888880] rounded-full text-sm hover:border-[#F5F5F0] hover:text-[#F5F5F0] transition-colors cursor-pointer"
-          >
-            Annuler
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 bg-[#E05252] text-white rounded-full text-sm font-semibold hover:bg-[#C04040] transition-colors cursor-pointer"
-          >
-            Supprimer
-          </button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-[#2A2A2A] text-[#888880] rounded-full text-sm hover:border-[#F5F5F0] hover:text-[#F5F5F0] transition-colors cursor-pointer">Annuler</button>
+          <button onClick={onConfirm} className="flex-1 px-4 py-2.5 bg-[#E05252] text-white rounded-full text-sm font-semibold hover:bg-[#C04040] transition-colors cursor-pointer">Supprimer</button>
         </div>
       </div>
     </div>
@@ -436,108 +281,80 @@ function DeleteModal({ photo, onClose, onConfirm }: { photo: Photo; onClose: () 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ManagePhotos() {
-  const [photoList, setPhotoList] = useState<Photo[]>(() => {
-  const saved = localStorage.getItem('benzaid_photos');
-  return saved ? JSON.parse(saved) : initialPhotos;
-});
-  useEffect(() => {
-  localStorage.setItem('benzaid_photos', JSON.stringify(photoList));
-}, [photoList]);
-   
+  const [photoList, setPhotoList] = useState<Photo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const { currency } = useCurrency();
-
-  // Modals state
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Photo | null>(null);
 
-  // Filters
+  useEffect(() => {
+    supabase.from('photos').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setPhotoList(data as Photo[]); setLoading(false); });
+  }, []);
+
   const filtered = photoList.filter(p => {
     const matchSearch =
       p.title.toLowerCase().includes(search.toLowerCase()) ||
       p.category.toLowerCase().includes(search.toLowerCase()) ||
       p.location_taken.toLowerCase().includes(search.toLowerCase());
-    const matchCat = filterCategory === 'All' || p.category === filterCategory;
-    return matchSearch && matchCat;
+    return matchSearch && (filterCategory === 'All' || p.category === filterCategory);
   });
 
-  // Actions
-  const toggleVisibility = (id: string) =>
+  const toggleVisibility = async (id: string) => {
+    const photo = photoList.find(p => p.id === id);
+    await supabase.from('photos').update({ is_visible: !photo?.is_visible }).eq('id', id);
     setPhotoList(prev => prev.map(p => p.id === id ? { ...p, is_visible: !p.is_visible } : p));
+  };
 
-  const toggleFeatured = (id: string) =>
+  const toggleFeatured = async (id: string) => {
+    const photo = photoList.find(p => p.id === id);
+    await supabase.from('photos').update({ is_featured: !photo?.is_featured }).eq('id', id);
     setPhotoList(prev => prev.map(p => p.id === id ? { ...p, is_featured: !p.is_featured } : p));
+  };
 
-  const deletePhoto = (id: string) =>
+  const deletePhoto = async (id: string) => {
+    await supabase.from('photos').delete().eq('id', id);
     setPhotoList(prev => prev.filter(p => p.id !== id));
+  };
 
-  const handleSave = (data: FormData, _previewUrl: string) => {
+  const handleSave = async (data: FormData, _previewUrl: string) => {
+    const payload = {
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      continent_region: data.continent_region,
+      tags: data.tags.split(',').map(t => t.trim()).filter(Boolean),
+      price_small: parseFloat(data.price_small) || 0,
+      price_large: parseFloat(data.price_large) || 0,
+      price_print_a4: parseFloat(data.price_print_A4) || 0,
+      price_print_a3: parseFloat(data.price_print_A3) || 0,
+      price_print_a2: parseFloat(data.price_print_A2) || 0,
+      price_canvas: parseFloat(data.price_canvas) || 0,
+      price_commercial: parseFloat(data.price_commercial) || 0,
+      image_url: data.image_url,
+      watermarked_preview_url: data.watermarked_preview_url || data.image_url,
+      resolution: data.resolution,
+      file_size: data.file_size,
+      camera_model: data.camera_model,
+      location_taken: data.location_taken,
+      date_taken: data.date_taken || null,
+      is_featured: data.is_featured,
+      is_visible: data.is_visible,
+      stock_prints: parseInt(data.stock_prints) || 0,
+      dominant_color: data.dominant_color,
+    };
+
     if (modalMode === 'add') {
-      const newPhoto: Photo = {
-        id: String(Date.now()),
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        continent_region: data.continent_region,
-        tags: data.tags.split(',').map(t => t.trim()).filter(Boolean),
-        price_small: parseFloat(data.price_small) || 0,
-        price_large: parseFloat(data.price_large) || 0,
-        price_print_A4: parseFloat(data.price_print_A4) || 0,
-        price_print_A3: parseFloat(data.price_print_A3) || 0,
-        price_print_A2: parseFloat(data.price_print_A2) || 0,
-        price_canvas: parseFloat(data.price_canvas) || 0,
-        price_commercial: parseFloat(data.price_commercial) || 0,
-        image_url: data.image_url,
-        watermarked_preview_url: data.watermarked_preview_url || data.image_url,
-        resolution: data.resolution,
-        file_size: data.file_size,
-        camera_model: data.camera_model,
-        location_taken: data.location_taken,
-        date_taken: data.date_taken,
-        is_featured: data.is_featured,
-        is_visible: data.is_visible,
-        stock_prints: parseInt(data.stock_prints) || 0,
-        downloads_count: 0,
-        rating: 0,
-        review_count: 0,
-        dominant_color: data.dominant_color,
-        created_at: new Date().toISOString().split('T')[0],
-      };
-      setPhotoList(prev => [newPhoto, ...prev]);
+      const { data: inserted } = await supabase.from('photos').insert(payload).select().single();
+      if (inserted) setPhotoList(prev => [inserted as Photo, ...prev]);
     } else if (modalMode === 'edit' && selectedPhoto) {
-      setPhotoList(prev => prev.map(p =>
-        p.id === selectedPhoto.id
-          ? {
-              ...p,
-              title: data.title,
-              description: data.description,
-              category: data.category,
-              continent_region: data.continent_region,
-              tags: data.tags.split(',').map(t => t.trim()).filter(Boolean),
-              price_small: parseFloat(data.price_small) || p.price_small,
-              price_large: parseFloat(data.price_large) || p.price_large,
-              price_print_A4: parseFloat(data.price_print_A4) || p.price_print_A4,
-              price_print_A3: parseFloat(data.price_print_A3) || p.price_print_A3,
-              price_print_A2: parseFloat(data.price_print_A2) || p.price_print_A2,
-              price_canvas: parseFloat(data.price_canvas) || p.price_canvas,
-              price_commercial: parseFloat(data.price_commercial) || p.price_commercial,
-              image_url: data.image_url,
-              watermarked_preview_url: data.watermarked_preview_url || data.image_url,
-              resolution: data.resolution,
-              file_size: data.file_size,
-              camera_model: data.camera_model,
-              location_taken: data.location_taken,
-              date_taken: data.date_taken,
-              is_featured: data.is_featured,
-              is_visible: data.is_visible,
-              stock_prints: parseInt(data.stock_prints) || p.stock_prints,
-              dominant_color: data.dominant_color,
-            }
-          : p
-      ));
+      await supabase.from('photos').update(payload).eq('id', selectedPhoto.id);
+      setPhotoList(prev => prev.map(p => p.id === selectedPhoto.id ? { ...p, ...payload } as Photo : p));
     }
+
     setModalMode(null);
     setSelectedPhoto(null);
   };
@@ -545,48 +362,31 @@ export default function ManagePhotos() {
   return (
     <div className="min-h-screen pt-24 pb-20 bg-[#0A0A0A]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="font-['Cormorant_Garamond'] text-3xl font-bold text-[#F5F5F0]">Manage Photos</h1>
             <p className="text-[#888880] text-sm">{filtered.length} photo{filtered.length !== 1 ? 's' : ''}</p>
           </div>
-          <button
-            onClick={() => { setSelectedPhoto(null); setModalMode('add'); }}
-            className="px-5 py-2.5 bg-[#C8A45A] text-[#0A0A0A] rounded-full text-sm font-semibold hover:bg-[#D4B66A] gold-transition cursor-pointer"
-          >
+          <button onClick={() => { setSelectedPhoto(null); setModalMode('add'); }}
+            className="px-5 py-2.5 bg-[#C8A45A] text-[#0A0A0A] rounded-full text-sm font-semibold hover:bg-[#D4B66A] gold-transition cursor-pointer">
             + Add New Photo
           </button>
         </div>
 
-        {/* Search + Filter */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher par titre, catégorie, lieu..."
-            className="flex-1 max-w-md px-4 py-3 bg-[#141414] border border-[#2A2A2A] rounded-full text-[#F5F5F0] placeholder-[#555] focus:outline-none focus:border-[#C8A45A] gold-transition text-sm"
-          />
+            className="flex-1 max-w-md px-4 py-3 bg-[#141414] border border-[#2A2A2A] rounded-full text-[#F5F5F0] placeholder-[#555] focus:outline-none focus:border-[#C8A45A] gold-transition text-sm" />
           <div className="flex gap-2 flex-wrap">
             {['All', ...CATEGORIES].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                  filterCategory === cat
-                    ? 'bg-[#C8A45A] text-[#0A0A0A]'
-                    : 'bg-[#141414] border border-[#2A2A2A] text-[#888880] hover:border-[#C8A45A]/50 hover:text-[#F5F5F0]'
-                }`}
-              >
+              <button key={cat} onClick={() => setFilterCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${filterCategory === cat ? 'bg-[#C8A45A] text-[#0A0A0A]' : 'bg-[#141414] border border-[#2A2A2A] text-[#888880] hover:border-[#C8A45A]/50 hover:text-[#F5F5F0]'}`}>
                 {cat}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-[#141414] border border-[#2A2A2A] rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -601,22 +401,15 @@ export default function ManagePhotos() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-16 text-[#555]">
-                      <span className="text-3xl block mb-2">🔍</span>
-                      Aucune photo trouvée
-                    </td>
-                  </tr>
+                {loading ? (
+                  <tr><td colSpan={6} className="text-center py-16 text-[#555]"><span className="text-3xl block mb-2">⏳</span>Chargement...</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-16 text-[#555]"><span className="text-3xl block mb-2">🔍</span>Aucune photo trouvée</td></tr>
                 ) : filtered.map(photo => (
                   <tr key={photo.id} className="border-b border-[#2A2A2A] last:border-0 hover:bg-[#1A1A1A] gold-transition">
-                    {/* Photo + Title */}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden"
-                          style={{ backgroundColor: photo.dominant_color }}
-                        >
+                        <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden" style={{ backgroundColor: photo.dominant_color }}>
                           {photo.image_url && !photo.image_url.startsWith('/') && (
                             <img src={photo.image_url} alt={photo.title} className="w-full h-full object-cover" />
                           )}
@@ -627,55 +420,28 @@ export default function ManagePhotos() {
                         </div>
                       </div>
                     </td>
-
-                    {/* Category */}
                     <td className="p-4 text-[#C8A45A] hidden md:table-cell">{photo.category}</td>
-
-                    {/* Price */}
                     <td className="p-4 text-[#888880] hidden lg:table-cell text-xs">
                       {formatCurrency(photo.price_small, currency)} – {formatCurrency(photo.price_commercial, currency)}
                     </td>
-
-                    {/* Visibility */}
                     <td className="p-4 text-center">
-                      <button
-                        onClick={() => toggleVisibility(photo.id)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                          photo.is_visible
-                            ? 'bg-[#4CAF7A]/10 text-[#4CAF7A] hover:bg-[#4CAF7A]/20'
-                            : 'bg-[#E05252]/10 text-[#E05252] hover:bg-[#E05252]/20'
-                        }`}
-                      >
+                      <button onClick={() => toggleVisibility(photo.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${photo.is_visible ? 'bg-[#4CAF7A]/10 text-[#4CAF7A] hover:bg-[#4CAF7A]/20' : 'bg-[#E05252]/10 text-[#E05252] hover:bg-[#E05252]/20'}`}>
                         {photo.is_visible ? 'Visible' : 'Caché'}
                       </button>
                     </td>
-
-                    {/* Featured */}
                     <td className="p-4 text-center hidden sm:table-cell">
-                      <button
-                        onClick={() => toggleFeatured(photo.id)}
-                        className={`text-xl cursor-pointer transition-colors ${photo.is_featured ? 'text-[#C8A45A]' : 'text-[#3A3A3A] hover:text-[#C8A45A]/50'}`}
-                        title={photo.is_featured ? 'Retirer de la sélection' : 'Mettre en vedette'}
-                      >
+                      <button onClick={() => toggleFeatured(photo.id)}
+                        className={`text-xl cursor-pointer transition-colors ${photo.is_featured ? 'text-[#C8A45A]' : 'text-[#3A3A3A] hover:text-[#C8A45A]/50'}`}>
                         {photo.is_featured ? '★' : '☆'}
                       </button>
                     </td>
-
-                    {/* Actions */}
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => { setSelectedPhoto(photo); setModalMode('edit'); }}
-                          className="text-[#888880] hover:text-[#C8A45A] text-xs font-medium cursor-pointer transition-colors"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(photo)}
-                          className="text-[#888880] hover:text-[#E05252] text-xs font-medium cursor-pointer transition-colors"
-                        >
-                          Supprimer
-                        </button>
+                        <button onClick={() => { setSelectedPhoto(photo); setModalMode('edit'); }}
+                          className="text-[#888880] hover:text-[#C8A45A] text-xs font-medium cursor-pointer transition-colors">Modifier</button>
+                        <button onClick={() => setDeleteTarget(photo)}
+                          className="text-[#888880] hover:text-[#E05252] text-xs font-medium cursor-pointer transition-colors">Supprimer</button>
                       </div>
                     </td>
                   </tr>
@@ -685,28 +451,21 @@ export default function ManagePhotos() {
           </div>
         </div>
 
-        {/* Photo count summary */}
         <p className="text-[#555] text-xs text-center mt-4">
           {photoList.length} photo{photoList.length !== 1 ? 's' : ''} au total · {photoList.filter(p => p.is_visible).length} visibles · {photoList.filter(p => p.is_featured).length} en vedette
         </p>
       </div>
 
-      {/* Modals */}
       {(modalMode === 'add' || modalMode === 'edit') && (
-        <PhotoModal
-          mode={modalMode}
-          photo={selectedPhoto}
+        <PhotoModal mode={modalMode} photo={selectedPhoto}
           onClose={() => { setModalMode(null); setSelectedPhoto(null); }}
-          onSave={handleSave}
-        />
+          onSave={handleSave} />
       )}
 
       {deleteTarget && (
-        <DeleteModal
-          photo={deleteTarget}
+        <DeleteModal photo={deleteTarget}
           onClose={() => setDeleteTarget(null)}
-          onConfirm={() => { deletePhoto(deleteTarget.id); setDeleteTarget(null); }}
-        />
+          onConfirm={() => { deletePhoto(deleteTarget.id); setDeleteTarget(null); }} />
       )}
     </div>
   );
